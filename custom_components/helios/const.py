@@ -6,7 +6,7 @@ DEFAULT_NAME = "Helios"
 SPEED_MAX = "max"
 
 SIGNAL_HELIOS_STATE_UPDATE = "helios_state_update"
-SCAN_INTERVAL = datetime.timedelta(seconds=60)
+SCAN_INTERVAL = datetime.timedelta(seconds=5)
 
 #  VALUE_TO_SPEED = {
     #  0: SPEED_OFF,

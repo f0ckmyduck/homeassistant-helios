@@ -1,12 +1,12 @@
-from datetime import datetime, date
-
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.entity import Entity
 
 from .const import (
     DOMAIN,
+    SCAN_INTERVAL,
     SIGNAL_HELIOS_STATE_UPDATE
 )
 
@@ -16,8 +16,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     name = hass.data[DOMAIN]["name"] + ' '
     state_proxy = hass.data[DOMAIN]["state_proxy"]
 
-    async_add_entities(
-        [
+    async_add_entities([
             HeliosTempSensor(client, name + "Outside Air", "temp_outside_air"),
             HeliosTempSensor(client, name + "Supply Air", "temp_supply_air"),
             HeliosTempSensor(client, name + "Extract Air", "temp_extract_air"),
@@ -25,9 +24,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
             HeliosSensor(client, name + "Extract Air Humidity", "v02136", 2, "%", "mdi:water-percent"),
             HeliosSensor(client, name + "Supply Air Speed", "v00348", 4, "rpm", "mdi:fan"),
             HeliosSensor(client, name + "Extract Air Speed", "v00349", 4, "rpm", "mdi:fan"),
-            HeliosFanSpeedSensor(state_proxy, name),
+            HeliosFanSpeedSensor(state_proxy, name)
         ],
-        update_before_add=False
+        update_before_add=True
     )
 
 class HeliosTempSensor(Entity):

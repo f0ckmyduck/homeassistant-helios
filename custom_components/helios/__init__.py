@@ -27,7 +27,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     hass.data[DOMAIN] = {"client": client, "state_proxy": state_proxy, "name": name}
 
     hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, "sensor"))
-    hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, "switch"))
     hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, "fan"))
 
     async_track_time_interval(hass, state_proxy.async_update, SCAN_INTERVAL)
@@ -42,10 +41,12 @@ class HeliosStateProxy:
         self._speed = None
 
     def set_speed(self, speed: int):
+        if not isinstance(speed, int):
+            speed = 50
+            
         if speed >= 0 and speed <= 100:
             # Disable auto mode.
-            self._client.set_variable('v00101', '1')
-            self._auto = False
+            self.set_auto_mode(False)
 
             # Set speed in 4 different stages because
             # god forbid someone uses a percentage.
@@ -54,7 +55,7 @@ class HeliosStateProxy:
 
     def set_auto_mode(self, enabled: bool):
         self._client.set_variable('v00101', '0' if enabled else '1')
-        self._auto = True
+        self._auto = enabled 
         self.fetchSpeed()
 
     def get_speed(self):
