@@ -48,9 +48,9 @@ class HeliosStateProxy:
             # Disable auto mode.
             self.set_auto_mode(False)
 
-            # Set speed in 4 different stages because
-            # god forbid someone uses a percentage.
-            self._client.set_variable('v00102', int(speed / 25))
+            # Set speed in 4 different stages because god forbid someone uses a percentage.
+            # Avoid 0 because the easycontrol server doesn't do anything at that step.
+            self._client.set_variable('v00102', int(speed / 25) + 1)
             self.fetchSpeed()
 
     def set_auto_mode(self, enabled: bool):
