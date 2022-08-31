@@ -1,13 +1,6 @@
-from datetime import timedelta
-import ipaddress
-import time
-import voluptuous as vol
-
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
-import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.const import CONF_HOST, CONF_NAME
@@ -54,9 +47,9 @@ class HeliosStateProxy:
             self._client.set_variable('v00101', '1')
             self._auto = False
 
-            # Set speed in percent.
-            self._client.set_feature('v00103', speed)
-            self._speed = speed
+            # Set speed in 4 different stages because
+            # god forbid someone uses a percentage.
+            self._client.set_variable('v00102', int(speed / 25))
             self.fetchSpeed()
 
     def set_auto_mode(self, enabled: bool):

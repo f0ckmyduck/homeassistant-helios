@@ -3,6 +3,7 @@ from typing import Any
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from homeassistant.components.fan import (
+    SUPPORT_SET_SPEED,
     FanEntity,
 )
 
@@ -16,8 +17,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
     name = hass.data[DOMAIN]["name"]
     async_add_entities([HeliosFan(state_proxy, name)])
 
-# TODO
-# Set supported_features attributes
 class HeliosFan(FanEntity):
     def __init__(self, state_proxy, name):
         self._state_proxy = state_proxy
@@ -56,4 +55,8 @@ class HeliosFan(FanEntity):
     def speed(self) -> str:
         speed = self._state_proxy.get_speed()
         return speed
+
+    @property
+    def supported_features(self) -> int:
+        return SUPPORT_SET_SPEED
 
