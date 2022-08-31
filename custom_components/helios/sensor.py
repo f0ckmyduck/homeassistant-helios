@@ -10,6 +10,7 @@ from .const import (
     SIGNAL_HELIOS_STATE_UPDATE
 )
 
+# Add some of the available sensors to the entity list.
 async def async_setup_entry(hass, entry, async_add_entities):
     client = hass.data[DOMAIN]["client"]
     name = hass.data[DOMAIN]["name"] + ' '
@@ -25,7 +26,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
             HeliosSensor(client, name + "Supply Air Speed", "v00348", 4, "rpm", "mdi:fan"),
             HeliosSensor(client, name + "Extract Air Speed", "v00349", 4, "rpm", "mdi:fan"),
             HeliosFanSpeedSensor(state_proxy, name),
-            HeliosBoostTimeSensor(state_proxy, name),
         ],
         update_before_add=False
     )
@@ -109,7 +109,7 @@ class HeliosFanSpeedSensor(Entity):
 
     @property
     def state(self):
-        return self._state_proxy.get_speed_percent()
+        return self._state_proxy.get_speed()
 
     @property
     def icon(self):
@@ -118,37 +118,3 @@ class HeliosFanSpeedSensor(Entity):
     @property
     def unit_of_measurement(self):
         return "%"
-
-class HeliosBoostTimeSensor(Entity):
-    def __init__(self, state_proxy, name):
-        self._state_proxy = state_proxy
-        self._name = name + "Boost Time"
-
-    @property
-    def should_poll(self):
-        return False
-
-    async def async_added_to_hass(self):
-        async_dispatcher_connect(
-            self.hass, SIGNAL_HELIOS_STATE_UPDATE, self._update_callback
-        )
-
-    @callback
-    def _update_callback(self):
-        self.async_schedule_update_ha_state(True)
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def state(self):
-        return self._state_proxy.get_boost_time()
-
-    @property
-    def icon(self):
-        return "mdi:clock"
-
-    @property
-    def unit_of_measurement(self):
-        return "mins"

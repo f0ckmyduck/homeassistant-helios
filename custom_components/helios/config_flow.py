@@ -1,14 +1,13 @@
 from homeassistant import config_entries
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
+from homeassistant.const import CONF_HOST, CONF_NAME
 
 import eazyctrl
 
 from .const import (
     DOMAIN,
     DEFAULT_NAME,
-    CONF_HOST,
-    CONF_NAME
 )
 
 class DomainConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

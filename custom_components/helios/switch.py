@@ -7,9 +7,11 @@ from .const import (
     SIGNAL_HELIOS_STATE_UPDATE
 )
 
+# Set the "Auto Mode" switch up.
 async def async_setup_entry(hass, entry, async_add_entities):
     name = hass.data[DOMAIN]["name"] + ' '
     state_proxy = hass.data[DOMAIN]["state_proxy"]
+
     async_add_entities(
         [
             HeliosAutoSwitch(state_proxy, name + "Auto Mode"),
