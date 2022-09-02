@@ -39,9 +39,8 @@ class HeliosFan(FanEntity):
     def set_percentage(self, percentage: int) -> None:
         self._state_proxy.set_speed(percentage)
 
-    def turn_on(self, percentage: int | None = None, preset_mode: str | None = None, **kwargs: Any) -> None:
-        if isinstance(percentage, int):
-            self._state_proxy.set_speed(percentage)
+    def turn_on(self, percentage: int, preset_mode: str, **kwargs: Any) -> None:
+        self._state_proxy.set_speed(percentage)
 
     def turn_off(self, **kwargs: Any) -> None:
         self._state_proxy.set_auto_mode(True);
