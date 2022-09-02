@@ -5,6 +5,8 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.const import CONF_HOST, CONF_NAME
 
+import logging
+
 from .const import (
     DOMAIN,
     SIGNAL_HELIOS_STATE_UPDATE,
@@ -66,7 +68,10 @@ class HeliosStateProxy:
 
     async def async_update(self, event_time):
         # Get the current operating mode.
-        self._auto = self._client.get_variable("v00101", 1, conversion=int) == 0
+        try:
+            self._auto = self._client.get_variable("v00101", 1, conversion=int) == 0
+        except (OSError):
+            logging.warning("Helios update failed! The modbus server is probably down.")
 
         # Get the current speed.
         self.fetchSpeed()
