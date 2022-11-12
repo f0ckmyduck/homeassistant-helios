@@ -33,7 +33,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         current_variable = "v00" + str(128 + i)
 
         if async_test_sensor(client, current_variable, 4):
-            print(i)
             entries.append(HeliosSensor(client, name + "External CO2 " + str(i), current_variable, 4, "ppm", "mdi:molecule-co2"))
 
     # Add all entries from the list above.
