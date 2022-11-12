@@ -1,7 +1,6 @@
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.entity import Entity
 
 from .const import (
@@ -16,18 +15,44 @@ async def async_setup_entry(hass, entry, async_add_entities):
     name = hass.data[DOMAIN]["name"] + ' '
     state_proxy = hass.data[DOMAIN]["state_proxy"]
 
-    async_add_entities([
-            HeliosTempSensor(client, name + "Outside Air", "temp_outside_air"),
-            HeliosTempSensor(client, name + "Supply Air", "temp_supply_air"),
-            HeliosTempSensor(client, name + "Extract Air", "temp_extract_air"),
-            HeliosTempSensor(client, name + "Exhaust Air", "temp_outgoing_air"),
-            HeliosSensor(client, name + "Extract Air Humidity", "v02136", 2, "%", "mdi:water-percent"),
-            HeliosSensor(client, name + "Supply Air Speed", "v00348", 4, "rpm", "mdi:fan"),
-            HeliosSensor(client, name + "Extract Air Speed", "v00349", 4, "rpm", "mdi:fan"),
-            HeliosFanSpeedSensor(state_proxy, name)
-        ],
-        update_before_add=True
+    # Add all the installation independent sensors which every unit should support.
+    entries = [
+        HeliosTempSensor(client, name + "Outside Air", "temp_outside_air"),
+        HeliosTempSensor(client, name + "Supply Air", "temp_supply_air"),
+        HeliosTempSensor(client, name + "Extract Air", "temp_extract_air"),
+        HeliosTempSensor(client, name + "Exhaust Air", "temp_outgoing_air"),
+        HeliosSensor(client, name + "Extract Air Humidity", "v02136", 2, "%", "mdi:water-percent"),
+        HeliosSensor(client, name + "Supply Air Speed", "v00348", 4, "rpm", "mdi:fan"),
+        HeliosSensor(client, name + "Extract Air Speed", "v00349", 4, "rpm", "mdi:fan"),
+        HeliosSensor(client, name + "External CO2 1", "v00128", 4, "ppm", "mdi:molecule-co2"),
+        HeliosFanSpeedSensor(state_proxy, name)
+    ]
+
+    # Test if any sensors return values.
+    for i in range(0, 8):
+        current_variable = "v00" + str(128 + i)
+
+        if async_test_sensor(client, current_variable, 4):
+            print(i)
+            entries.append(HeliosSensor(client, name + "External CO2 " + str(i), current_variable, 4, "ppm", "mdi:molecule-co2"))
+
+    # Add all entries from the list above.
+    async_add_entities(entries, update_before_add=False)
+
+def async_test_sensor(client, variable, var_length):
+    temp = client.get_variable(
+        variable,
+        var_length,
+        conversion=str
     )
+
+    try:
+        int(temp)
+        return True
+
+    except(ValueError):
+        return False
+
 
 class HeliosTempSensor(Entity):
     def __init__(self, client, name, metric):
@@ -62,11 +87,17 @@ class HeliosSensor(Entity):
         self._client = client
 
     def update(self):
-        self._state = self._client.get_variable(
+        temp = self._client.get_variable(
             self._variable,
             self._var_length,
-            conversion=int
+            conversion=str
         )
+
+        try:
+            self._state = int(temp)
+
+        except(ValueError):
+            self._state = "-"
 
     @property
     def name(self):
