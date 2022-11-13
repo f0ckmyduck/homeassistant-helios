@@ -1,11 +1,11 @@
 {
   "domain": "helios",
   "name": "Helios",
-  "documentation": "https://github.com/asev/homeassistant-helios",
-  "issue_tracker": "https://github.com/asev/homeassistant-helios/issues",
+  "documentation": "https://github.com/f0ckmyduck/homeassistant-helios",
+  "issue_tracker": "https://github.com/f0ckmyduck/homeassistant-helios/issues",
   "config_flow": true,
-  "requirements": ["eazyctrl==0.2"],
+  "requirements": ["eazyctrl==0.4", "func-timeout==4.3.5"],
   "dependencies": [],
-  "codeowners": ["@asev"],
+  "codeowners": ["@asev", "@f0ckmyduck"],
   "version": "0.4.0"
 }

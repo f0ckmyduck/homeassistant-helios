@@ -3,6 +3,9 @@ from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 
+from func_timeout import func_timeout, FunctionTimedOut
+import logging
+
 from .const import (
     DOMAIN,
     SCAN_INTERVAL,
@@ -86,17 +89,18 @@ class HeliosSensor(Entity):
         self._client = client
 
     def update(self):
-        temp = self._client.get_variable(
-            self._variable,
-            self._var_length,
-            conversion=str
-        )
 
         try:
-            self._state = int(temp)
+            temp = str(func_timeout(1, self._client.get_variable, args=(self._variable, self._var_length)))
 
-        except(ValueError):
-            self._state = "-"
+            try:
+                self._state = int(temp)
+
+            except(ValueError):
+                self._state = "-"
+
+        except(FunctionTimedOut):
+            logging.warning("Sensor " + self._name + " (" + self._variable + ") value fetch timed out! ")
 
     @property
     def name(self):

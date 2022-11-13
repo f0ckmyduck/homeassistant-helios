@@ -5,6 +5,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.const import CONF_HOST, CONF_NAME
 
+from func_timeout import func_timeout, FunctionTimedOut
 import logging
 
 from .const import (
@@ -69,13 +70,19 @@ class HeliosStateProxy:
     async def async_update(self, event_time):
         # Get the current operating mode.
         try:
-            self._auto = self._client.get_variable("v00101", 1, conversion=int) == 0
-        except (OSError):
-            logging.warning("Helios update failed! The modbus server is probably down.")
+            self._auto = (int(str(func_timeout(1, self._client.get_variable, args=('v00101', 1)))) == 0)
+
+        except(FunctionTimedOut):
+            logging.warning("Sensor AutoMode (v00101) value fetch timed out!")
 
         # Get the current speed.
         self.fetchSpeed()
 
     def fetchSpeed(self):
-        self._speed = self._client.get_variable("v00103", 3, conversion=int)
+        try:
+            self._speed = int(str(func_timeout(1, self._client.get_variable, args=("v00103", 3))))
+
+        except(FunctionTimedOut):
+            logging.warning("Sensor FanSpeed (v00103) value fetch timed out!")
+
         async_dispatcher_send(self._hass, SIGNAL_HELIOS_STATE_UPDATE)
