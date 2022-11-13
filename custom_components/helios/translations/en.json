@@ -13,6 +13,8 @@
     "error": {
       "invalid_host": "Invalid hostname or IP address."
     },
-    "abort": {}
+    "abort": {
+        "already_configured": "One device of this class is already configured"
+    }
   }
 }
