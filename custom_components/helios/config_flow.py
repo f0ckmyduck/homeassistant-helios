@@ -25,7 +25,6 @@ class DomainConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
         if user_input is not None:
-
             try:
                 client = eazyctrl.EazyController(user_input[CONF_HOST])
                 device = client.get_variable("v00000", 30)
@@ -43,6 +42,11 @@ class DomainConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     print("No unique ID!")
 
+                    return self.async_show_form(
+                        step_id="user",
+                        data_schema=self.schema,
+                        errors={"base": "invalid_id"}
+                    )
 
             except:
                 return self.async_show_form(

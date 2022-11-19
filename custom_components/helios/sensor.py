@@ -27,7 +27,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         HeliosSensor(client, name + "Extract Air Humidity", "v02136", 2, "%", "mdi:water-percent"),
         HeliosSensor(client, name + "Supply Air Speed", "v00348", 4, "rpm", "mdi:fan"),
         HeliosSensor(client, name + "Extract Air Speed", "v00349", 4, "rpm", "mdi:fan"),
-        HeliosSensor(client, name + "External CO2 1", "v00128", 4, "ppm", "mdi:molecule-co2"),
         HeliosFanSpeedSensor(state_proxy, name)
     ]
 
