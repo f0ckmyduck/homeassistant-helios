@@ -3,6 +3,7 @@ from homeassistant.config_entries import ConfigEntry
 
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.device_registry import format_mac
 from homeassistant.const import CONF_HOST, CONF_NAME
 
 from func_timeout import func_timeout, FunctionTimedOut
@@ -60,6 +61,14 @@ class HeliosStateProxy:
     def __init__(self, hass, client):
         self._device = get_helios_var(client, "v00000", 30)
         self._kwl_mac = get_helios_var(client, "v00002", 18)
+        self._sw_version = get_helios_var(client, "v01101", 7)
+
+        if isinstance(self._kwl_mac, str):
+            self._base_unique_id = format_mac(self._kwl_mac)
+
+        else:
+            self._base_unique_id = None
+
         self._hass = hass
         self._client = client
         self._auto = True 

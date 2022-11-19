@@ -19,11 +19,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities([HeliosFan(state_proxy, name)])
 
 class HeliosFan(FanEntity):
+
     def __init__(self, state_proxy, name):
         self._attr_icon = "mdi:air-filter"
+        self._attr_unique_id = state_proxy._base_unique_id + "-Fan"
         
         self._state_proxy = state_proxy
         self._name = name
+
 
     @property
     def should_poll(self):
@@ -33,11 +36,12 @@ class HeliosFan(FanEntity):
     #  def device_info(self) -> DeviceInfo | None:
         #  return DeviceInfo(
             #  identifiers={
-                #  (DOMAIN, self.unique_id)
+                #  (DOMAIN, self._attr_unique_id)
             #  },
             #  name=self._name,
             #  manufacturer="Helios",
-            #  model=""
+            #  model=self._state_proxy.device,
+            #  sw_version=self._state_proxy._sw_version,
         #  )
 
     async def async_added_to_hass(self):

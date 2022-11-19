@@ -19,13 +19,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     # Add all the installation independent sensors which every unit should support.
     entries = [
-        HeliosTempSensor(client, name + "Outside Air", "temp_outside_air"),
-        HeliosTempSensor(client, name + "Supply Air", "temp_supply_air"),
-        HeliosTempSensor(client, name + "Extract Air", "temp_extract_air"),
-        HeliosTempSensor(client, name + "Exhaust Air", "temp_outgoing_air"),
-        HeliosSensor(client, name + "Extract Air Humidity", "v02136", 2, "%", "mdi:water-percent"),
-        HeliosSensor(client, name + "Supply Air Speed", "v00348", 4, "rpm", "mdi:fan"),
-        HeliosSensor(client, name + "Extract Air Speed", "v00349", 4, "rpm", "mdi:fan"),
+        HeliosTempSensor(client, state_proxy, name + "Outside Air", "temp_outside_air"),
+        HeliosTempSensor(client, state_proxy, name + "Supply Air", "temp_supply_air"),
+        HeliosTempSensor(client, state_proxy, name + "Extract Air", "temp_extract_air"),
+        HeliosTempSensor(client, state_proxy, name + "Exhaust Air", "temp_outgoing_air"),
+        HeliosSensor(client, state_proxy, name + "Extract Air Humidity", "v02136", 2, "%", "mdi:water-percent"),
+        HeliosSensor(client, state_proxy, name + "Supply Air Speed", "v00348", 4, "rpm", "mdi:fan"),
+        HeliosSensor(client, state_proxy, name + "Extract Air Speed", "v00349", 4, "rpm", "mdi:fan"),
         HeliosFanSpeedSensor(state_proxy, name)
     ]
 
@@ -36,13 +36,15 @@ async def async_setup_entry(hass, entry, async_add_entities):
         temp = get_helios_var(client, current_variable, 4)
         if isinstance(temp, str):
             if temp != "-":
-                entries.append(HeliosSensor(client, name + "External CO2 " + str(i), current_variable, 4, "ppm", "mdi:molecule-co2"))
+                entries.append(HeliosSensor(client, state_proxy, name + "External CO2 " + str(i), current_variable, 4, "ppm", "mdi:molecule-co2"))
 
     # Add all entries from the list above.
     async_add_entities(entries, update_before_add=False)
 
 class HeliosTempSensor(Entity):
-    def __init__(self, client, name, metric):
+    def __init__(self, client, state_proxy, name, metric):
+        self._attr_unique_id = state_proxy._base_unique_id + "-" + metric
+
         self._state = None
         self._name = name
         self._metric = metric
@@ -64,7 +66,9 @@ class HeliosTempSensor(Entity):
         return TEMP_CELSIUS
 
 class HeliosSensor(Entity):
-    def __init__(self, client, name, var, var_length, units, icon):
+    def __init__(self, client, state_proxy, name, var, var_length, units, icon):
+        self._attr_unique_id = state_proxy._base_unique_id + "-" + var
+
         self._state = None
         self._name = name
         self._variable = var
@@ -99,6 +103,8 @@ class HeliosSensor(Entity):
 
 class HeliosFanSpeedSensor(Entity):
     def __init__(self, state_proxy, name):
+        self._attr_unique_id = state_proxy._base_unique_id + "-FanSpeed"
+
         self._state_proxy = state_proxy
         self._name = name + "Fan Speed"
 
