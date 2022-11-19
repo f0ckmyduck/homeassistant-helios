@@ -32,17 +32,17 @@ class HeliosFan(FanEntity):
     def should_poll(self):
         return False
 
-    #  @property
-    #  def device_info(self) -> DeviceInfo | None:
-        #  return DeviceInfo(
-            #  identifiers={
-                #  (DOMAIN, self._attr_unique_id)
-            #  },
-            #  name=self._name,
-            #  manufacturer="Helios",
-            #  model=self._state_proxy.device,
-            #  sw_version=self._state_proxy._sw_version,
-        #  )
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        return DeviceInfo(
+            identifiers={
+                (DOMAIN, self._state_proxy._base_unique_id)
+            },
+            name=self._name,
+            manufacturer="Helios",
+            model=self._state_proxy._device,
+            sw_version=self._state_proxy._sw_version,
+        )
 
     async def async_added_to_hass(self):
         async_dispatcher_connect(
