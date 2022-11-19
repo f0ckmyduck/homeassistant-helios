@@ -6,6 +6,7 @@ from homeassistant.components.fan import (
     SUPPORT_SET_SPEED,
     FanEntity,
 )
+from homeassistant.helpers.entity import DeviceInfo
 
 from .const import (
     DOMAIN,
@@ -19,12 +20,25 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 class HeliosFan(FanEntity):
     def __init__(self, state_proxy, name):
+        self._attr_icon = "mdi:air-filter"
+        
         self._state_proxy = state_proxy
         self._name = name
 
     @property
     def should_poll(self):
         return False
+
+    #  @property
+    #  def device_info(self) -> DeviceInfo | None:
+        #  return DeviceInfo(
+            #  identifiers={
+                #  (DOMAIN, self.unique_id)
+            #  },
+            #  name=self._name,
+            #  manufacturer="Helios",
+            #  model=""
+        #  )
 
     async def async_added_to_hass(self):
         async_dispatcher_connect(
@@ -34,7 +48,6 @@ class HeliosFan(FanEntity):
     @callback
     def _update_callback(self):
         self.async_schedule_update_ha_state(True)
-
 
     def set_percentage(self, percentage: int) -> None:
         self._state_proxy.set_speed(percentage)

@@ -3,8 +3,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 
-from func_timeout import func_timeout, FunctionTimedOut
-import logging
+from . import get_helios_var
 
 from .const import (
     DOMAIN,
@@ -34,26 +33,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
     for i in range(0, 8):
         current_variable = "v00" + str(128 + i)
 
-        if async_test_sensor(client, current_variable, 4):
-            entries.append(HeliosSensor(client, name + "External CO2 " + str(i), current_variable, 4, "ppm", "mdi:molecule-co2"))
+        temp = get_helios_var(client, current_variable, 4)
+        if isinstance(temp, str):
+            if temp != "-":
+                entries.append(HeliosSensor(client, name + "External CO2 " + str(i), current_variable, 4, "ppm", "mdi:molecule-co2"))
 
     # Add all entries from the list above.
     async_add_entities(entries, update_before_add=False)
-
-def async_test_sensor(client, variable, var_length):
-    temp = client.get_variable(
-        variable,
-        var_length,
-        conversion=str
-    )
-
-    try:
-        int(temp)
-        return True
-
-    except(ValueError):
-        return False
-
 
 class HeliosTempSensor(Entity):
     def __init__(self, client, name, metric):
@@ -88,19 +74,13 @@ class HeliosSensor(Entity):
         self._client = client
 
     def update(self):
+        temp =  get_helios_var(self._client, self._variable, self._var_length)
 
-        try:
-            temp = str(func_timeout(1, self._client.get_variable, args=(self._variable, self._var_length)))
-
-            try:
-                self._state = int(temp)
-
-            except(ValueError):
-                self._state = "-"
-
-        except(FunctionTimedOut):
-            logging.warning("Sensor " + self._name + " (" + self._variable + ") value fetch timed out! ")
-
+        if isinstance(temp, str):
+            self._state =  int(temp)
+        else:
+            self._state = 0
+        
     @property
     def name(self):
         return self._name

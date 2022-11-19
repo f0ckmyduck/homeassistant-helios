@@ -18,26 +18,48 @@ import eazyctrl
 
 async def async_setup(hass: HomeAssistant, config: dict):
     hass.data.setdefault(DOMAIN, {})
+
+    # Initialize via configuration.yaml if needed
     hass.data[DOMAIN]["config"] = config.get(DOMAIN) or {}
     return True
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
-    host = config_entry.data[CONF_HOST]
-    name = config_entry.data[CONF_NAME]
-
-    client = eazyctrl.EazyController(host)
+    client = eazyctrl.EazyController(config_entry.data[CONF_HOST])
     state_proxy = HeliosStateProxy(hass, client)
-    hass.data[DOMAIN] = {"client": client, "state_proxy": state_proxy, "name": name}
+
+    # Set global data dictionary
+    hass.data[DOMAIN] = {"client": client, "state_proxy": state_proxy, "name": config_entry.data[CONF_NAME]}
 
     hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, "sensor"))
     hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, "fan"))
 
     async_track_time_interval(hass, state_proxy.async_update, SCAN_INTERVAL)
     await state_proxy.async_update(0)
+
     return True
+
+def get_helios_var(client: eazyctrl.EazyController, name: str, size: int) -> str | None:
+    var = None
+
+    try:
+        var = func_timeout(1, client.get_variable, args=(name, size))
+
+    except Exception as e:
+        logging.warning("Getting variable " + name + "(" + str(size) + ") failed with the following exception: " + str(e))
+
+    except (FunctionTimedOut):
+        logging.warning("Getting variable " + name + "(" + str(size) + ") timed out")
+
+    if not isinstance(var, str):
+        logging.warning("Did not receive a return variable:" + str(var) + " -> " + name + "(" + str(size) + ")")
+
+    return var
+
 
 class HeliosStateProxy:
     def __init__(self, hass, client):
+        self._device = get_helios_var(client, "v00000", 30)
+        self._kwl_mac = get_helios_var(client, "v00002", 18)
         self._hass = hass
         self._client = client
         self._auto = True 
@@ -68,21 +90,18 @@ class HeliosStateProxy:
         return self._auto
 
     async def async_update(self, event_time):
-        # Get the current operating mode.
-        try:
-            self._auto = (int(str(func_timeout(1, self._client.get_variable, args=('v00101', 1)))) == 0)
+        # Enable or disable auto mode.
+        temp = get_helios_var(self._client, "v00101", 1)
+        if temp is not None:
+            self._auto = (int(temp) == 0)
 
-        except(FunctionTimedOut):
-            logging.warning("Sensor AutoMode (v00101) value fetch timed out!")
+        else:
+            self._auto = False
 
         # Get the current speed.
         self.fetchSpeed()
 
     def fetchSpeed(self):
-        try:
-            self._speed = int(str(func_timeout(1, self._client.get_variable, args=("v00103", 3))))
-
-        except(FunctionTimedOut):
-            logging.warning("Sensor FanSpeed (v00103) value fetch timed out!")
+        self._speed = get_helios_var(self._client, "v00103", 3)
 
         async_dispatcher_send(self._hass, SIGNAL_HELIOS_STATE_UPDATE)
