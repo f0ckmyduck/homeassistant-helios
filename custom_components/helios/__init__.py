@@ -10,7 +10,6 @@ from func_timeout import func_timeout, FunctionTimedOut
 from queue import Queue, Empty
 from threading import Thread
 import logging
-from time import sleep
 
 from .const import (
     DOMAIN,
@@ -51,8 +50,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN]["state_proxy"].kill()
     hass.data[DOMAIN].pop("state_proxy")
     hass.data[DOMAIN].pop("client")
-
-    logging.info("Cleaned Up")
+    hass.data[DOMAIN].pop("name")
     return True
 
 class HeliosStateProxy:
@@ -84,12 +82,12 @@ class HeliosStateProxy:
         self._listener_queue_receive = Queue()
         self._listener = Thread(target=self.update)
         self._listener.start()
-        logging.info("Started listener thread")
+        #  logging.info("Started listener thread")
 
     def kill(self):
         self._listener_queue_send.put(_sentinel)
         self._listener.join()
-        logging.info("Joined listener thread")
+        #  logging.info("Joined listener thread")
 
     def get_helios_var(self, name: str, size: int) -> str | None:
         var = None
@@ -168,7 +166,7 @@ class HeliosStateProxy:
             return
 
         async_dispatcher_send(self._hass, SIGNAL_HELIOS_STATE_UPDATE)
-        logging.warning("Update Fetched")
+        #  logging.warning("Update Fetched")
         
 
     def update(self):
@@ -182,7 +180,7 @@ class HeliosStateProxy:
 
             # Update all sensors which are registered
             for index in self._sensors:
-                logging.warning("Updating: " + str(index[0]) + " - " + str(index[1]))
+                #  logging.warning("Updating: " + str(index[0]) + " - " + str(index[1]))
                 temp = self.get_helios_var(index[0], index[1])
 
                 if isinstance(temp, str):
@@ -192,5 +190,5 @@ class HeliosStateProxy:
             self._speed = int(self._sensors[("v00103", 3)])
 
             self._listener_queue_receive.put(self._sensors)
-            logging.warning("Next sensor state update ready")
+            #  logging.warning("Next sensor state update ready")
 
