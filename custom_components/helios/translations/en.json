@@ -11,8 +11,7 @@
       }
     },
     "error": {
-      "invalid_host": "Invalid hostname or IP address.",
-      "invalid_id": "Failed to configure an invalid ID for the device."
+      "invalid_host": "Invalid hostname or IP address."
     },
     "abort": {
         "already_configured": "One device of this class is already configured"

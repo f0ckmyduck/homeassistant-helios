@@ -29,20 +29,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(user_input[CONF_NAME])
             self._abort_if_unique_id_configured()
 
-            #  try:
-
-            #  except:
-                #  return self.async_show_form(
-                    #  step_id="user",
-                    #  data_schema=self.schema,
-                    #  errors={"base": "invalid_host"}
-                #  )
-
             return self.async_create_entry(
                 title=user_input[CONF_NAME],
                 data=user_input
             )
-
-            
 
         return self.async_show_form(step_id="user", data_schema=self.schema)
