@@ -3,8 +3,6 @@ from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 
-from . import get_helios_var
-
 from .const import (
     DOMAIN,
     SCAN_INTERVAL,
@@ -18,55 +16,38 @@ async def async_setup_entry(hass, entry, async_add_entities):
     state_proxy = hass.data[DOMAIN]["state_proxy"]
 
     # Add all the installation independent sensors which every unit should support.
-    entries = [
-        HeliosTempSensor(client, state_proxy, name + "Outside Air", "temp_outside_air"),
-        HeliosTempSensor(client, state_proxy, name + "Supply Air", "temp_supply_air"),
-        HeliosTempSensor(client, state_proxy, name + "Extract Air", "temp_extract_air"),
-        HeliosTempSensor(client, state_proxy, name + "Exhaust Air", "temp_outgoing_air"),
-        HeliosSensor(client, state_proxy, name + "Extract Air Humidity", "v02136", 2, "%", "mdi:water-percent"),
-        HeliosSensor(client, state_proxy, name + "Supply Air Speed", "v00348", 4, "rpm", "mdi:fan"),
-        HeliosSensor(client, state_proxy, name + "Extract Air Speed", "v00349", 4, "rpm", "mdi:fan"),
-        HeliosFanSpeedSensor(state_proxy, name)
+    entity_data = [
+        # Temperature sensors
+        ("Outside Air", "v00104", 7, TEMP_CELSIUS, "mdi:thermometer"),
+        ("Supply Air", "v00105", 7, TEMP_CELSIUS, "mdi:thermometer"),
+        ("Extract Air", "v00106", 7, TEMP_CELSIUS, "mdi:thermometer"),
+        ("Exhaust Air", "v00107", 7, TEMP_CELSIUS, "mdi:thermometer"),
+
+        ("Extract Air Humidity", "v02136", 2, "%", "mdi:water-percent"),
+        ("Supply Air Speed", "v00348", 4, "rpm", "mdi:fan"),
+        ("Extract Air Speed", "v00349", 4, "rpm", "mdi:fan"),
+
+        # Fanspeed
+        ("Fan Speed", "v00102", 1, "%", "mdi:fan"),
     ]
 
-    # Test if any sensors return values.
+    # Try to add all CO2 sensors.
     for i in range(0, 8):
-        current_variable = "v00" + str(128 + i)
+        entity_data.append(("External CO2 " + str(i), "v00" + str(128 + i), 4, "ppm", "mdi:molecule-co2"))
 
-        temp = get_helios_var(client, current_variable, 4)
-        if isinstance(temp, str):
-            if temp != "-":
-                entries.append(HeliosSensor(client, state_proxy, name + "External CO2 " + str(i), current_variable, 4, "ppm", "mdi:molecule-co2"))
-
+    # Try to register them in the update function of the stateproxy
+    # and if that succeeds, add them to the entity list.
+    entries = []
+    for i in entity_data:
+        if state_proxy.register_sensor(i[1], i[2]):
+            entries.append(HeliosSensor(client, state_proxy, name + i[0], i[1], i[2], i[3], i[4]))
+    
     # Add all entries from the list above.
     async_add_entities(entries, update_before_add=False)
 
-class HeliosTempSensor(Entity):
-    def __init__(self, client, state_proxy, name, metric):
-        self._attr_unique_id = state_proxy._base_unique_id + "-" + metric
-
-        self._state = None
-        self._name = name
-        self._metric = metric
-        self._client = client
-
-    def update(self):
-        self._state = self._client.get_feature(self._metric)
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def state(self):
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        return TEMP_CELSIUS
-
 class HeliosSensor(Entity):
     def __init__(self, client, state_proxy, name, var, var_length, units, icon):
+        self._state_proxy = state_proxy
         self._attr_unique_id = state_proxy._base_unique_id + "-" + var
 
         self._state = None
@@ -78,12 +59,7 @@ class HeliosSensor(Entity):
         self._client = client
 
     def update(self):
-        temp =  get_helios_var(self._client, self._variable, self._var_length)
-
-        if isinstance(temp, str):
-            self._state =  int(temp)
-        else:
-            self._state = 0
+        self._state = self._state_proxy._sensors[(self._variable, self._var_length)]
         
     @property
     def name(self):
@@ -100,39 +76,3 @@ class HeliosSensor(Entity):
     @property
     def unit_of_measurement(self):
         return self._units
-
-class HeliosFanSpeedSensor(Entity):
-    def __init__(self, state_proxy, name):
-        self._attr_unique_id = state_proxy._base_unique_id + "-FanSpeed"
-
-        self._state_proxy = state_proxy
-        self._name = name + "Fan Speed"
-
-    @property
-    def should_poll(self):
-        return False
-
-    async def async_added_to_hass(self):
-        async_dispatcher_connect(
-            self.hass, SIGNAL_HELIOS_STATE_UPDATE, self._update_callback
-        )
-
-    @callback
-    def _update_callback(self):
-        self.async_schedule_update_ha_state(True)
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def state(self):
-        return self._state_proxy.get_speed()
-
-    @property
-    def icon(self):
-        return "mdi:fan"
-
-    @property
-    def unit_of_measurement(self):
-        return "%"
