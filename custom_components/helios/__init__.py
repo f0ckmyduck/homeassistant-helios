@@ -7,8 +7,10 @@ from homeassistant.helpers.device_registry import format_mac
 from homeassistant.const import CONF_HOST, CONF_NAME
 
 from func_timeout import func_timeout, FunctionTimedOut
+from queue import Queue, Empty
+from threading import Thread
 import logging
-import time
+from time import sleep
 
 from .const import (
     DOMAIN,
@@ -17,6 +19,9 @@ from .const import (
 )
 
 import eazyctrl
+
+
+_sentinel = object()
 
 async def async_setup(hass: HomeAssistant, config: dict):
     hass.data.setdefault(DOMAIN, {})
@@ -36,7 +41,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, "fan"))
 
     async_track_time_interval(hass, state_proxy.async_update, SCAN_INTERVAL)
-    await state_proxy.async_update(0)
 
     return True
 
@@ -62,6 +66,14 @@ class HeliosStateProxy:
         else:
             self._base_unique_id = None
 
+        # TODO error checking
+        self.register_sensor("v00101", 1)
+        self.register_sensor("v00103", 3)
+
+        self._listener_queue_send = Queue()
+        self._listener_queue_receive = Queue()
+        self._listener = Thread(target=self.update)
+        self._listener.start()
 
     def get_helios_var(self, name: str, size: int) -> str | None:
         var = None
@@ -114,12 +126,10 @@ class HeliosStateProxy:
             # Set speed in 4 different stages because god forbid someone uses a percentage.
             # Avoid 0 because the easycontrol server doesn't do anything at that step.
             self.set_helios_var('v00102', int(speed / 25) + 1)
-            self.fetchSpeed()
 
     def set_auto_mode(self, enabled: bool):
         self.set_helios_var('v00101', 0 if enabled else 1)
         self._auto = enabled 
-        self.fetchSpeed()
 
     def register_sensor(self, name, size) -> bool:
         temp = self.get_helios_var(name, size)
@@ -131,27 +141,40 @@ class HeliosStateProxy:
 
         return False
 
+
     async def async_update(self, event_time):
-        # Enable or disable auto mode.
-        temp = self.get_helios_var("v00101", 1)
-        if temp is not None:
-            self._auto = (int(temp) == 0)
+        self._listener_queue_send.put_nowait(self._sensors)
 
-        else:
-            self._auto = False
+        try:
+            self._sensors = self._listener_queue_receive.get_nowait()
 
-        # Update all sensors which are registered
-        for index in self._sensors:
-            logging.warning("Updating: " + str(index[0]) + " - " + str(index[1]))
-            temp = self.get_helios_var(index[0], index[1])
+        except Empty:
+            return
 
-            if isinstance(temp, str):
-                self._sensors[(index[0], index[1])] = temp
-
-        self.fetchSpeed()
-
-    def fetchSpeed(self):
-        self._speed = self.get_helios_var("v00103", 3)
-
-        logging.warning("Sending update")
         async_dispatcher_send(self._hass, SIGNAL_HELIOS_STATE_UPDATE)
+        logging.warning("Update Fetched")
+        
+
+    def update(self):
+        while True:
+            temp = self._listener_queue_send.get()
+
+            if temp == _sentinel:
+                break
+
+            self._sensors = temp
+
+            # Update all sensors which are registered
+            for index in self._sensors:
+                logging.warning("Updating: " + str(index[0]) + " - " + str(index[1]))
+                temp = self.get_helios_var(index[0], index[1])
+
+                if isinstance(temp, str):
+                    self._sensors[(index[0], index[1])] = temp
+
+            self._auto = int(self._sensors[("v00101", 1)]) == 0
+            self._speed = int(self._sensors[("v00103", 3)])
+
+            self._listener_queue_receive.put(self._sensors)
+            logging.warning("Next sensor state update ready")
+

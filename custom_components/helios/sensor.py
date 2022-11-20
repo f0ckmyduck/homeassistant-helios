@@ -28,7 +28,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         ("Extract Air Speed", "v00349", 4, "rpm", "mdi:fan"),
 
         # Fanspeed
-        ("Fan Speed", "v00102", 1, "%", "mdi:fan"),
+        ("Fan Speed", "v00102", 1, "Step", "mdi:fan"),
     ]
 
     # Try to add all CO2 sensors.
