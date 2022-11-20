@@ -30,20 +30,30 @@ async def async_setup(hass: HomeAssistant, config: dict):
     hass.data[DOMAIN]["config"] = config.get(DOMAIN) or {}
     return True
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
-    client = eazyctrl.EazyController(config_entry.data[CONF_HOST])
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    client = eazyctrl.EazyController(entry.data[CONF_HOST])
     state_proxy = HeliosStateProxy(hass, client)
 
     # Set global data dictionary
-    hass.data[DOMAIN] = {"client": client, "state_proxy": state_proxy, "name": config_entry.data[CONF_NAME]}
+    hass.data[DOMAIN] = {"client": client, "state_proxy": state_proxy, "name": entry.data[CONF_NAME]}
 
-    hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, "sensor"))
-    hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, "fan"))
+    hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, "sensor"))
+    hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, "fan"))
 
     async_track_time_interval(hass, state_proxy.async_update, SCAN_INTERVAL)
 
     return True
 
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    await hass.config_entries.async_forward_entry_unload(entry, "sensor")
+    await hass.config_entries.async_forward_entry_unload(entry, "fan")
+
+    hass.data[DOMAIN]["state_proxy"].kill()
+    hass.data[DOMAIN].pop("state_proxy")
+    hass.data[DOMAIN].pop("client")
+
+    logging.info("Cleaned Up")
+    return True
 
 class HeliosStateProxy:
     def __init__(self, hass, client):
@@ -74,6 +84,12 @@ class HeliosStateProxy:
         self._listener_queue_receive = Queue()
         self._listener = Thread(target=self.update)
         self._listener.start()
+        logging.info("Started listener thread")
+
+    def kill(self):
+        self._listener_queue_send.put(_sentinel)
+        self._listener.join()
+        logging.info("Joined listener thread")
 
     def get_helios_var(self, name: str, size: int) -> str | None:
         var = None
