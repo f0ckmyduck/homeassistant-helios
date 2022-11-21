@@ -94,20 +94,23 @@ class HeliosStateProxy:
 
         try:
             if self._webserver_busy:
-                return var
+                return None
 
             self._webserver_busy = True
             var = func_timeout(1, self._client.get_variable, args=(name, size))
             self._webserver_busy = False
 
-        except Exception as e:
-            logging.warning("Getting variable " + name + "(" + str(size) + ") failed with the following exception: " + str(e))
-
         except (FunctionTimedOut):
             logging.warning("Getting variable " + name + "(" + str(size) + ") timed out")
+            return None
+
+        except Exception as e:
+            logging.warning("Getting variable " + name + "(" + str(size) + ") failed with the following exception: " + str(e))
+            return None
 
         if not isinstance(var, str):
             logging.warning("Did not receive a return variable:" + str(var) + " -> " + name + "(" + str(size) + ")")
+            return None
 
         return var
 
@@ -166,7 +169,7 @@ class HeliosStateProxy:
             return
 
         async_dispatcher_send(self._hass, SIGNAL_HELIOS_STATE_UPDATE)
-        #  logging.warning("Update Fetched")
+        logging.info("Update Fetched")
         
 
     def update(self):
@@ -190,5 +193,5 @@ class HeliosStateProxy:
             self._speed = int(self._sensors[("v00103", 3)])
 
             self._listener_queue_receive.put(self._sensors)
-            #  logging.warning("Next sensor state update ready")
+            logging.info("Next sensor state update ready")
 
