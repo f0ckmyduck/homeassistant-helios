@@ -148,7 +148,8 @@ class HeliosStateProxy:
 
 
     async def async_update(self, event_time):
-        self._listener_queue_send.put_nowait(self._sensors)
+        if self._listener_queue_send.empty:
+            self._listener_queue_send.put_nowait(self._sensors)
 
         try:
             self._sensors = self._listener_queue_receive.get_nowait()
@@ -174,8 +175,7 @@ class HeliosStateProxy:
                 #  logging.warning("Updating: " + str(index[0]) + " - " + str(index[1]))
                 temp = self.get_helios_var(index[0], index[1])
 
-                # TODO Test this later
-                # self._sensors[(index[0], index[1])] = 0
+                self._sensors[(index[0], index[1])] = 0
 
                 if isinstance(temp, str):
                     self._sensors[(index[0], index[1])] = temp
@@ -183,6 +183,7 @@ class HeliosStateProxy:
             self._auto = int(self._sensors[("v00101", 1)]) == 0
             self._speed = int(self._sensors[("v00103", 3)])
 
-            self._listener_queue_receive.put(self._sensors)
-            logging.info("Next sensor state update ready")
+            if self._listener_queue_receive.empty:
+                self._listener_queue_receive.put_nowait(self._sensors)
+                logging.info("Next sensor state update ready")
 
