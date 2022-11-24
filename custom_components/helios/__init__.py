@@ -55,8 +55,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 class HeliosStateProxy:
     def __init__(self, hass, client):
-        self._webserver_busy = False
-
         self._sensors = {}
 
         self._hass = hass
@@ -93,12 +91,7 @@ class HeliosStateProxy:
         var = None
 
         try:
-            if self._webserver_busy:
-                return None
-
-            self._webserver_busy = True
             var = func_timeout(1, self._client.get_variable, args=(name, size))
-            self._webserver_busy = False
 
         except (FunctionTimedOut):
             logging.warning("Getting variable " + name + "(" + str(size) + ") timed out")
@@ -116,12 +109,7 @@ class HeliosStateProxy:
 
     def set_helios_var(self, name: str, var: int) -> bool:
         try:
-            if self._webserver_busy:
-                return False
-
-            self._webserver_busy = True
             self._client.set_variable(name, var)
-            self._webserver_busy = False
 
         except Exception as e:
             logging.warning("Setting variable " + name + "(" + str(var) + ") failed with the following exception: " + str(e))
@@ -185,6 +173,9 @@ class HeliosStateProxy:
             for index in self._sensors:
                 #  logging.warning("Updating: " + str(index[0]) + " - " + str(index[1]))
                 temp = self.get_helios_var(index[0], index[1])
+
+                # TODO Test this later
+                # self._sensors[(index[0], index[1])] = 0
 
                 if isinstance(temp, str):
                     self._sensors[(index[0], index[1])] = temp
