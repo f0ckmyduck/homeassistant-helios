@@ -158,7 +158,7 @@ class HeliosStateProxy:
             return
 
         async_dispatcher_send(self._hass, SIGNAL_HELIOS_STATE_UPDATE)
-        logging.info("Update Fetched")
+        #  logging.info("Update Fetched")
         
 
     def update(self):
@@ -185,5 +185,5 @@ class HeliosStateProxy:
 
             if self._listener_queue_receive.empty:
                 self._listener_queue_receive.put_nowait(self._sensors)
-                logging.info("Next sensor state update ready")
+                #  logging.info("Next sensor state update ready")
 
