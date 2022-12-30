@@ -27,10 +27,22 @@ async def async_setup_entry(hass, entry, async_add_entities):
         ("Fan Speed", "v00102", 1, "Step", "mdi:fan"),
     ]
 
-    # Try to add all CO2 sensors.
+    # Try to add of the possible external sensors.
     for i in range(0, 8):
         entity_data.append(("External CO2 " + str(i), "v00" + str(128 + i), 4,
                             "ppm", "mdi:molecule-co2"))
+
+    for i in range(0, 8):
+        entity_data.append(("External Humidity " + str(i), "v00" + str(111 + i),
+                           4, "%", "mdi:water-percent"))
+
+    for i in range(0, 8):
+        entity_data.append(("External Temperature " + str(i), "v00" + str(119 + i),
+                            7, TEMP_CELSIUS, "mdi:thermometer"))
+
+    for i in range(0, 8):
+        entity_data.append(("Gas concentration " + str(i), "v00" + str(136 + i),
+                           4, "ppm", "mdi:gas-cylinder"))
 
     # Try to register them in the update function of the stateproxy
     # and if that succeeds, add them to the entity list.
