@@ -19,8 +19,8 @@ from .const import (
 
 import eazyctrl
 
-
 _sentinel = object()
+
 
 async def async_setup(hass: HomeAssistant, config: dict):
     hass.data.setdefault(DOMAIN, {})
@@ -29,19 +29,27 @@ async def async_setup(hass: HomeAssistant, config: dict):
     hass.data[DOMAIN]["config"] = config.get(DOMAIN) or {}
     return True
 
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     client = eazyctrl.EazyController(entry.data[CONF_HOST])
     state_proxy = HeliosStateProxy(hass, client)
 
     # Set global data dictionary
-    hass.data[DOMAIN] = {"client": client, "state_proxy": state_proxy, "name": entry.data[CONF_NAME]}
+    hass.data[DOMAIN] = {
+        "client": client,
+        "state_proxy": state_proxy,
+        "name": entry.data[CONF_NAME]
+    }
 
-    hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, "sensor"))
-    hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, "fan"))
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "sensor"))
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "fan"))
 
     async_track_time_interval(hass, state_proxy.async_update, SCAN_INTERVAL)
 
     return True
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     await hass.config_entries.async_forward_entry_unload(entry, "sensor")
@@ -53,13 +61,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN].pop("name")
     return True
 
+
 class HeliosStateProxy:
+
     def __init__(self, hass, client):
         self._sensors = {}
 
         self._hass = hass
         self._client = client
-        self._auto = True 
+        self._auto = True
         self._speed = None
 
         self._device = self.get_helios_var("v00000", 30)
@@ -90,29 +100,40 @@ class HeliosStateProxy:
     def get_helios_var(self, name: str, size: int) -> str | None:
         var = None
 
+        # Handle the TimeOut Exception in a separate try block
+        # because it might fire after another exception already occurred.
         try:
-            var = func_timeout(1, self._client.get_variable, args=(name, size))
+            try:
+                var = func_timeout(1,
+                                   self._client.get_variable,
+                                   args=(name, size))
+
+                if not isinstance(var, str):
+                    logging.warning("Did not receive a return variable:" +
+                                    str(var) + " -> " + name + "(" +
+                                    str(size) + ")")
+                    return None
+
+                return var
+
+            except Exception as e:
+                logging.warning("Getting variable " + name + "(" + str(size) +
+                                ") failed with the following exception: " +
+                                str(e))
 
         except (FunctionTimedOut):
-            logging.warning("Getting variable " + name + "(" + str(size) + ") timed out")
-            return None
+            logging.warning("Getting variable " + name + "(" + str(size) +
+                            ") timed out")
 
-        except Exception as e:
-            logging.warning("Getting variable " + name + "(" + str(size) + ") failed with the following exception: " + str(e))
-            return None
-
-        if not isinstance(var, str):
-            logging.warning("Did not receive a return variable:" + str(var) + " -> " + name + "(" + str(size) + ")")
-            return None
-
-        return var
+        return None
 
     def set_helios_var(self, name: str, var: int) -> bool:
         try:
             self._client.set_variable(name, var)
 
         except Exception as e:
-            logging.warning("Setting variable " + name + "(" + str(var) + ") failed with the following exception: " + str(e))
+            logging.warning("Setting variable " + name + "(" + str(var) +
+                            ") failed with the following exception: " + str(e))
             return False
 
         return True
@@ -123,7 +144,7 @@ class HeliosStateProxy:
     def set_speed(self, speed: int):
         if not isinstance(speed, int):
             speed = 50
-            
+
         if speed >= 0 and speed <= 100:
             # Disable auto mode.
             self.set_auto_mode(False)
@@ -134,7 +155,7 @@ class HeliosStateProxy:
 
     def set_auto_mode(self, enabled: bool):
         self.set_helios_var('v00101', 0 if enabled else 1)
-        self._auto = enabled 
+        self._auto = enabled
 
     def register_sensor(self, name, size) -> bool:
         temp = self.get_helios_var(name, size)
@@ -145,7 +166,6 @@ class HeliosStateProxy:
                 return True
 
         return False
-
 
     async def async_update(self, event_time):
         if self._listener_queue_send.empty:
@@ -159,7 +179,6 @@ class HeliosStateProxy:
 
         async_dispatcher_send(self._hass, SIGNAL_HELIOS_STATE_UPDATE)
         #  logging.info("Update Fetched")
-        
 
     def update(self):
         while True:
@@ -186,4 +205,3 @@ class HeliosStateProxy:
             if self._listener_queue_receive.empty:
                 self._listener_queue_receive.put_nowait(self._sensors)
                 #  logging.info("Next sensor state update ready")
-

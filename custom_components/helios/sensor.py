@@ -3,11 +3,8 @@ from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 
-from .const import (
-    DOMAIN,
-    SCAN_INTERVAL,
-    SIGNAL_HELIOS_STATE_UPDATE
-)
+from .const import (DOMAIN, SCAN_INTERVAL, SIGNAL_HELIOS_STATE_UPDATE)
+
 
 # Add some of the available sensors to the entity list.
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -22,7 +19,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         ("Supply Air", "v00105", 7, TEMP_CELSIUS, "mdi:thermometer"),
         ("Extract Air", "v00106", 7, TEMP_CELSIUS, "mdi:thermometer"),
         ("Exhaust Air", "v00107", 7, TEMP_CELSIUS, "mdi:thermometer"),
-
         ("Extract Air Humidity", "v02136", 2, "%", "mdi:water-percent"),
         ("Supply Air Speed", "v00348", 4, "rpm", "mdi:fan"),
         ("Extract Air Speed", "v00349", 4, "rpm", "mdi:fan"),
@@ -33,20 +29,26 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     # Try to add all CO2 sensors.
     for i in range(0, 8):
-        entity_data.append(("External CO2 " + str(i), "v00" + str(128 + i), 4, "ppm", "mdi:molecule-co2"))
+        entity_data.append(("External CO2 " + str(i), "v00" + str(128 + i), 4,
+                            "ppm", "mdi:molecule-co2"))
 
     # Try to register them in the update function of the stateproxy
     # and if that succeeds, add them to the entity list.
     entries = []
     for i in entity_data:
         if state_proxy.register_sensor(i[1], i[2]):
-            entries.append(HeliosSensor(client, state_proxy, name + i[0], i[1], i[2], i[3], i[4]))
-    
+            entries.append(
+                HeliosSensor(client, state_proxy, name + i[0], i[1], i[2],
+                             i[3], i[4]))
+
     # Add all entries from the list above.
     async_add_entities(entries, update_before_add=False)
 
+
 class HeliosSensor(Entity):
-    def __init__(self, client, state_proxy, name, var, var_length, units, icon):
+
+    def __init__(self, client, state_proxy, name, var, var_length, units,
+                 icon):
         self._state_proxy = state_proxy
         self._attr_unique_id = state_proxy._base_unique_id + "-" + var
 
@@ -59,8 +61,9 @@ class HeliosSensor(Entity):
         self._client = client
 
     def update(self):
-        self._state = self._state_proxy._sensors[(self._variable, self._var_length)]
-        
+        self._state = self._state_proxy._sensors[(self._variable,
+                                                  self._var_length)]
+
     @property
     def name(self):
         return self._name
