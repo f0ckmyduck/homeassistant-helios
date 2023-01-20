@@ -2,6 +2,7 @@ from homeassistant.const import TEMP_CELSIUS
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
+from homeassistant.components.sensor import SensorEntity, STATE_CLASS_MEASUREMENT
 
 from .const import (DOMAIN, SCAN_INTERVAL, SIGNAL_HELIOS_STATE_UPDATE)
 
@@ -57,8 +58,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entries, update_before_add=False)
 
 
-class HeliosSensor(Entity):
-
+class HeliosSensor(SensorEntity):
     def __init__(self, client, state_proxy, name, var, var_length, units,
                  icon):
         self._state_proxy = state_proxy
@@ -71,6 +71,7 @@ class HeliosSensor(Entity):
         self._units = units
         self._icon = icon
         self._client = client
+        self._attr_state_class = STATE_CLASS_MEASUREMENT
 
     def update(self):
         self._state = self._state_proxy._sensors[(self._variable,
