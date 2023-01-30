@@ -189,8 +189,6 @@ class HeliosStateProxy:
                 logging.debug("Updating: " + str(index[0]) + " - " + str(index[1]))
                 temp = self.get_helios_var(index[0], index[1])
 
-                self._sensors[(index[0], index[1])] = 0
-
                 if isinstance(temp, str):
                     self._sensors[(index[0], index[1])] = temp
 
