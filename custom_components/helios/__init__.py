@@ -100,32 +100,26 @@ class HeliosStateProxy:
     def get_helios_var(self, name: str, size: int) -> str | None:
         var = None
 
-        # Handle the TimeOut Exception in a separate try block
-        # because it might fire after another exception already occurred.
         try:
-            try:
-                var = func_timeout(1,
-                                   self._client.get_variable,
-                                   args=(name, size))
+            var = func_timeout(1,
+                               self._client.get_variable,
+                               args=(name, size))
 
-                if not isinstance(var, str):
-                    logging.warning("Did not receive a return variable:" +
-                                    str(var) + " -> " + name + "(" +
-                                    str(size) + ")")
-                    return None
-
-                return var
-
-            except Exception as e:
-                logging.warning("Getting variable " + name + "(" + str(size) +
-                                ") failed with the following exception: " +
-                                str(e))
+            if not isinstance(var, str):
+                logging.warning("Did not receive a return variable:" +
+                                str(var) + " -> " + name + "(" +
+                                str(size) + ")")
 
         except (FunctionTimedOut):
             logging.warning("Getting variable " + name + "(" + str(size) +
                             ") timed out")
 
-        return None
+        except Exception as e:
+            logging.warning("Getting variable " + name + "(" + str(size) +
+                            ") failed with the following exception: " +
+                            str(e))
+
+        return var
 
     def set_helios_var(self, name: str, var: int) -> bool:
         try:
