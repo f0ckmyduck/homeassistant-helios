@@ -69,8 +69,6 @@ class HeliosStateProxy:
 
         self._hass = hass
         self._client = client
-        self._auto = True
-        self._speed = None
 
         self._device = self.get_helios_var("v00000", 30)
         self._kwl_mac = self.get_helios_var("v00002", 18)
@@ -90,12 +88,12 @@ class HeliosStateProxy:
         self._listener_queue_receive = Queue()
         self._listener = Thread(target=self.update)
         self._listener.start()
-        #  logging.info("Started listener thread")
+        logging.debug("Started listener thread")
 
     def kill(self):
         self._listener_queue_send.put(_sentinel)
         self._listener.join()
-        #  logging.info("Joined listener thread")
+        logging.debug("Joined listener thread")
 
     def get_helios_var(self, name: str, size: int) -> str | None:
         var = None
@@ -133,7 +131,10 @@ class HeliosStateProxy:
         return True
 
     def is_auto(self):
-        return self._auto
+        return int(self._sensors[("v00101", 1)]) == 0
+
+    def get_speed(self):
+        return int(self._sensors[("v00103", 3)])
 
     def set_speed(self, speed: int):
         if not isinstance(speed, int):
@@ -149,7 +150,6 @@ class HeliosStateProxy:
 
     def set_auto_mode(self, enabled: bool):
         self.set_helios_var('v00101', 0 if enabled else 1)
-        self._auto = enabled
 
     def register_sensor(self, name, size) -> bool:
         temp = self.get_helios_var(name, size)
@@ -172,8 +172,9 @@ class HeliosStateProxy:
             return
 
         async_dispatcher_send(self._hass, SIGNAL_HELIOS_STATE_UPDATE)
-        #  logging.info("Update Fetched")
+        logging.debug("Update Fetched")
 
+    # Sets the retrieves all sensor values and caches them in sensors
     def update(self):
         while True:
             temp = self._listener_queue_send.get()
@@ -185,7 +186,7 @@ class HeliosStateProxy:
 
             # Update all sensors which are registered
             for index in self._sensors:
-                #  logging.warning("Updating: " + str(index[0]) + " - " + str(index[1]))
+                logging.debug("Updating: " + str(index[0]) + " - " + str(index[1]))
                 temp = self.get_helios_var(index[0], index[1])
 
                 self._sensors[(index[0], index[1])] = 0
@@ -193,9 +194,7 @@ class HeliosStateProxy:
                 if isinstance(temp, str):
                     self._sensors[(index[0], index[1])] = temp
 
-            self._auto = int(self._sensors[("v00101", 1)]) == 0
-            self._speed = int(self._sensors[("v00103", 3)])
 
             if self._listener_queue_receive.empty:
                 self._listener_queue_receive.put_nowait(self._sensors)
-                #  logging.info("Next sensor state update ready")
+                logging.debug("Next sensor state update ready")
