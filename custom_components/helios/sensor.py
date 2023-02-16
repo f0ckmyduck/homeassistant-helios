@@ -75,7 +75,7 @@ class HeliosSensor(SensorEntity):
 
     def update(self):
         self._state = self._state_proxy._sensors[(self._variable,
-                                                  self._var_length)]
+                                                  self._var_length, False)]
 
     @property
     def name(self):

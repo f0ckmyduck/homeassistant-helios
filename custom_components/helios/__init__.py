@@ -81,8 +81,12 @@ class HeliosStateProxy:
             self._base_unique_id = None
 
         # TODO error checking
-        self.register_sensor("v00101", 1)
-        self.register_sensor("v00103", 3)
+        self.register_sensor('v00101', 1, False)
+        self.register_sensor('v00103', 3, False)
+
+        # Register the Fan speed and Auto mode sensors
+        self.register_sensor('v00102', 0, True)
+        self.register_sensor('v00101', 0, True)
 
         self._listener_queue_send = Queue()
         self._listener_queue_receive = Queue()
@@ -131,10 +135,10 @@ class HeliosStateProxy:
         return True
 
     def is_auto(self):
-        return int(self._sensors[("v00101", 1)]) == 0
+        return int(self._sensors[("v00101", 1, False)]) == 0
 
     def get_speed(self):
-        return int(self._sensors[("v00103", 3)])
+        return int(self._sensors[("v00103", 3, False)])
 
     def set_speed(self, speed: int):
         if not isinstance(speed, int):
@@ -146,18 +150,25 @@ class HeliosStateProxy:
 
             # Set speed in 4 different stages because god forbid someone uses a percentage.
             # Avoid 0 because the easycontrol server doesn't do anything at that step.
-            self.set_helios_var('v00102', int(speed / 25) + 1)
+            #  self.set_helios_var('v00102', int(speed / 25) + 1)
+            self._sensors[('v00102', 0, True)] = int(speed / 25) + 1
 
     def set_auto_mode(self, enabled: bool):
-        self.set_helios_var('v00101', 0 if enabled else 1)
+        #  self.set_helios_var('v00101', 0 if enabled else 1)
+        self._sensors[('v00101', 0, True)] = (0 if enabled else 1)
 
-    def register_sensor(self, name, size) -> bool:
-        temp = self.get_helios_var(name, size)
+    def register_sensor(self, name, var, is_setable) -> bool:
+        if not is_setable:
+            #Check if the sensors even exists.
+            temp = self.get_helios_var(name, var)
 
-        if isinstance(temp, str):
-            if temp != "-":
-                self._sensors[(name, size)] = temp
-                return True
+            if isinstance(temp, str):
+                if temp != "-":
+                    self._sensors[(name, var, is_setable)] = temp
+                    return True
+        else:
+            self._sensors[(name, var, is_setable)] = 0
+            return True
 
         return False
 
@@ -179,6 +190,7 @@ class HeliosStateProxy:
         while True:
             temp = self._listener_queue_send.get()
 
+            # Break the infinite loop.
             if temp == _sentinel:
                 break
 
@@ -187,11 +199,17 @@ class HeliosStateProxy:
             # Update all sensors which are registered
             for index in self._sensors:
                 logging.debug("Updating: " + str(index[0]) + " - " + str(index[1]))
-                temp = self.get_helios_var(index[0], index[1])
 
-                if isinstance(temp, str):
-                    self._sensors[(index[0], index[1])] = temp
+                # If it is not setable, fetch the value of the sensor.
+                if not index[2]:
+                    temp = self.get_helios_var(index[0], index[1])
 
+                    if isinstance(temp, str):
+                        self._sensors[(index[0], index[1], index[2])] = temp
+
+                else:
+                    # TODO error handling
+                    self.set_helios_var(index[0], self._sensors[(index[0], index[1], index[2])]) 
 
             if self._listener_queue_receive.empty:
                 self._listener_queue_receive.put_nowait(self._sensors)
