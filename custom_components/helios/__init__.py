@@ -82,11 +82,11 @@ class HeliosStateProxy:
 
         # TODO error checking
         self.register_sensor('v00101', 1, False)
-        self.register_sensor('v00103', 3, False)
+        self.register_sensor('v00102', 1, False)
 
         # Register the Fan speed and Auto mode sensors
-        self.register_sensor('v00102', 0, True)
         self.register_sensor('v00101', 0, True)
+        self.register_sensor('v00102', 0, True)
 
         self._listener_queue_send = Queue()
         self._listener_queue_receive = Queue()
@@ -138,23 +138,13 @@ class HeliosStateProxy:
         return int(self._sensors[("v00101", 1, False)]) == 0
 
     def get_speed(self):
-        return int(self._sensors[("v00103", 3, False)])
+        return int(self._sensors[("v00102", 1, False)])
 
     def set_speed(self, speed: int):
-        if not isinstance(speed, int):
-            speed = 50
-
-        if speed >= 0 and speed <= 100:
-            # Disable auto mode.
-            self.set_auto_mode(False)
-
-            # Set speed in 4 different stages because god forbid someone uses a percentage.
-            # Avoid 0 because the easycontrol server doesn't do anything at that step.
-            #  self.set_helios_var('v00102', int(speed / 25) + 1)
-            self._sensors[('v00102', 0, True)] = int(speed / 25) + 1
+        self.set_auto_mode(False)
+        self._sensors[('v00102', 0, True)] = speed
 
     def set_auto_mode(self, enabled: bool):
-        #  self.set_helios_var('v00101', 0 if enabled else 1)
         self._sensors[('v00101', 0, True)] = (0 if enabled else 1)
 
     def register_sensor(self, name, var, is_setable) -> bool:
@@ -197,19 +187,19 @@ class HeliosStateProxy:
             self._sensors = temp
 
             # Update all sensors which are registered
-            for index in self._sensors:
-                logging.debug("Updating: " + str(index[0]) + " - " + str(index[1]))
+            for i in self._sensors:
+                logging.debug("Updating: " + str(i[0]) + " - " + str(i[1]))
 
                 # If it is not setable, fetch the value of the sensor.
-                if not index[2]:
-                    temp = self.get_helios_var(index[0], index[1])
+                if not i[2]:
+                    temp = self.get_helios_var(i[0], i[1])
 
                     if isinstance(temp, str):
-                        self._sensors[(index[0], index[1], index[2])] = temp
+                        self._sensors[(i[0], i[1], i[2])] = temp
 
                 else:
                     # TODO error handling
-                    self.set_helios_var(index[0], self._sensors[(index[0], index[1], index[2])]) 
+                    self.set_helios_var(i[0], self._sensors[(i[0], i[1], i[2])]) 
 
             if self._listener_queue_receive.empty:
                 self._listener_queue_receive.put_nowait(self._sensors)

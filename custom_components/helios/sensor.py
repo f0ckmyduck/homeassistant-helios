@@ -49,7 +49,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     # and if that succeeds, add them to the entity list.
     entries = []
     for i in entity_data:
-        if state_proxy.register_sensor(i[1], i[2]):
+        if state_proxy.register_sensor(i[1], i[2], False):
             entries.append(
                 HeliosSensor(client, state_proxy, name + i[0], i[1], i[2],
                              i[3], i[4]))
